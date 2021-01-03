@@ -25,7 +25,7 @@ You could use finder go to check the opencv path.
 
 In Building settings,  add /usr/local/Cellar/opencv/4.5.0_5/lib into **Library Search Path**
 
-### 3.3 Other links
+### 3.3 Other Linker Flags
 
 In your terminal enter the following commends:
 
