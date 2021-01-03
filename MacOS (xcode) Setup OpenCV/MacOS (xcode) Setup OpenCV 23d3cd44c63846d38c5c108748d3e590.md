@@ -40,3 +40,15 @@ MacOSX (Xcode):
     cd build
     cmake -G Xcode -D OpenCV_DIR=$OpenCV_DIR ..
     open ANPR.xcodeproj
+    
+## Old OpenCV package
+
+**Note that most of the time you can just use the "include all" header: #include <opencv2/opencv.hpp>**
+
+- opencv/cv.h: #include <opencv2/opencv.hpp>
+- highgui.h: #include <opencv2/highgui.hpp>
+- cvaux.h: #include <opencv/cvaux.h>
+- CV_BGR2GRAY: cv::COLOR_BGR2GRAY
+- CV_THRESH_OTSU: cv::THRESH_OTSU
+- CV_THRESH_BINARY: cv::THRESH_BINARY
+- cv::MOP_CLOSE: cv::MORPH_CLOSE
