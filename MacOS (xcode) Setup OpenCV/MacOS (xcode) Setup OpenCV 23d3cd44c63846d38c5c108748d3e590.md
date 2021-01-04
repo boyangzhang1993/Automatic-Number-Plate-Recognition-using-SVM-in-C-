@@ -40,6 +40,11 @@ MacOSX (Xcode):
     cd build
     cmake -G Xcode -D OpenCV_DIR=$OpenCV_DIR ..
     open ANPR.xcodeproj
+or 
+
+g++ $(pkg-config --cflags --libs opencv4) -std=c++11  main.cpp -o mainTest
+
+./mainTest
     
 ## Old OpenCV package
 
