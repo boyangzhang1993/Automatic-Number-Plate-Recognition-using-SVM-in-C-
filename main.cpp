@@ -5,164 +5,136 @@
 //  Created by Boyang Zhang on 12/31/20.
 //
 
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
-#include <vector>
-#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+
 #include <iostream>
-#include <opencv2/features2d.hpp>
+#include <vector>
 
-using namespace cv;
+#include "DetectRegions.h"
+#include "OCR.h"
+
 using namespace std;
+using namespace cv;
+using namespace cv::ml;
 
-bool verifySizes(RotatedRect candidate ){
+string getFilename(string s) {
 
-  float error=0.4;
-//Spain car plate size: 52x11 aspect 4,7272
-  const float aspect=4.7272;
-//Set a min and max area. All other patches are discarded
-  int min= 15*aspect*15; // minimum area
-  int max= 125*aspect*125; // maximum area
-//Get only patches that match to a respect ratio.
-  float rmin= aspect-aspect*error;
-  float rmax= aspect+aspect*error;
+    char sep = '/';
+    char sepExt='.';
 
-  int area= candidate.size.height * candidate.size.width;
-  float r= (float)candidate.size.width / (float)candidate.size.height;
-  if(r<1)
-  r= 1/r;
+    #ifdef _WIN32
+        sep = '\\';
+    #endif
 
-  if(( area < min || area > max ) || ( r < rmin || r > rmax )){
-    return false;
-  }else{
-  return true;
-  }
+    size_t i = s.rfind(sep, s.length( ));
+    if (i != string::npos) {
+        string fn= (s.substr(i+1, s.length( ) - i));
+        size_t j = fn.rfind(sepExt, fn.length( ));
+        if (i != string::npos) {
+            return fn.substr(0,j);
+        }else{
+            return fn;
+        }
+    }else{
+        return "";
+    }
 }
 
-
-int main()
+int main ( int argc, char* argv[])
 {
-    std::string image_path = samples::findFile("image1.jpg");
-    Mat img = imread(image_path, IMREAD_COLOR);
-    if(img.empty())
+    cout << "OpenCV Automatic Number Plate Recognition\n";
+    char* filename;
+    Mat input_image;
+
+    //Check if user specify image to process
+    if(argc >= 2 )
     {
-        std::cout << "Could not read the image: " << image_path << std::endl;
-        return 1;
+        filename= argv[1];
+        //load image  in gray level
+        input_image=imread(filename,1);
+    }else{
+        printf("Use:\n\t%s image\n",argv[0]);
+        return 0;
     }
-    Mat img_gray;
-    Mat input = imread(image_path, IMREAD_COLOR);
-    cvtColor(input, img_gray, cv::COLOR_BGR2GRAY);
-    //Find vertical lines. Car plates have high density of vertical lines
-    Mat img_sobel;
-    Sobel(img_gray, img_sobel, CV_8U, 1, 0, 3, 1, 0);
-    //threshold image
-    Mat img_threshold;
-    threshold(img_sobel, img_threshold, 0, 255, cv::THRESH_OTSU+cv::THRESH_BINARY);
-    Mat element = getStructuringElement(MORPH_RECT, Size(17, 3));
-    morphologyEx(img_threshold, img_threshold, cv::MORPH_CLOSE, element);
-    //Find contours of possibles plates
-    vector< vector< Point> > contours;
-    findContours(img_threshold,
-                contours,           // a vector of contours
-                cv::RETR_EXTERNAL,   // retrieve the external contours
-                cv::CHAIN_APPROX_NONE); // all pixels of each contour
-    
-    //Start to iterate to each contour found
-    vector<vector<Point> >::iterator itc= contours.begin();
-    vector<RotatedRect> rects;
 
-    //Remove patch that has  no inside limits of aspect ratio and area.
-    
-    while (itc!=contours.end()) {
-    //Create bounding rect of object
-      RotatedRect mr= minAreaRect(Mat(*itc));
-      if( !verifySizes(mr)){
-        itc= contours.erase(itc);
-      }else{
-      ++itc;
-      rects.push_back(mr);
-      }
-    }
-    
-    for(int i=0; i< rects.size(); i++){
-    //For better rect cropping for each possible box
-    //Make floodfill algorithm because the plate has white background
-    //And then we can retrieve more clearly the contour box
-    circle(result, rects[i].center, 3, Scalar(0,255,0), -1);
-    //get the min size between width and height
-    float minSize=(rects[i].size.width < rects[i].size.height)?rects[i].size.width:rects[i].size.height;
-    minSize=minSize-minSize*0.5;
-    //initialize rand and get 5 points around center for floodfill algorithm
-    srand ( time(NULL) );
-    //Initialize floodfill parameters and variables
-    Mat mask;
-    mask.create(input.rows + 2, input.cols + 2, CV_8UC1);
-    mask= Scalar::all(0);
-    int loDiff = 30;
-    int upDiff = 30;
-    int connectivity = 4;
-    int newMaskVal = 255;
-    int NumSeeds = 10;
-    Rect ccomp;
-    int flags = connectivity + (newMaskVal << 8 ) + cv::FLOODFILL_FIXED_RANGE + cv::FLOODFILL_MASK_ONLY;
-    for(int j=0; j<NumSeeds; j++){
-      Point seed;
-      seed.x=rects[i].center.x+rand()%(int)minSize-(minSize/2);
-      seed.y=rects[i].center.y+rand()%(int)minSize-(minSize/2);
-      circle(result, seed, 1, Scalar(0,255,255), -1);
-      int area = floodFill(input, mask, seed, Scalar(255,0,0), &ccomp,   Scalar(loDiff, loDiff, loDiff), Scalar(upDiff, upDiff, upDiff), flags);
-      }
-    
-    
-    /*
-    bool DetectRegions::verifySizes(RotatedRect candidate ){
+    string filename_whithoutExt=getFilename(filename);
+    cout << "working with file: "<< filename_whithoutExt << "\n";
+    //Detect posibles plate regions
+    DetectRegions detectRegions;
+    detectRegions.setFilename(filename_whithoutExt);
+    detectRegions.saveRegions=false;
+    detectRegions.showSteps=false;
+    vector<Plate> posible_regions= detectRegions.run( input_image );
 
-      float error=0.4;
-    //Spain car plate size: 52x11 aspect 4,7272
-      const float aspect=4.7272;
-    //Set a min and max area. All other patches are discarded
-      int min= 15*aspect*15; // minimum area
-      int max= 125*aspect*125; // maximum area
-    //Get only patches that match to a respect ratio.
-      float rmin= aspect-aspect*error;
-      float rmax= aspect+aspect*error;
+    //SVM for each plate region to get valid car plates
+    //Read file storage.
+    FileStorage fs;
+    fs.open("SVM.xml", FileStorage::READ);
+    Mat SVM_TrainingData;
+    Mat SVM_Classes;
+    fs["TrainingData"] >> SVM_TrainingData;
+    fs["classes"] >> SVM_Classes;
+    
+    Ptr<SVM> svmClassifier = cv::ml::SVM::create();
+    svmClassifier->setType(cv::ml::SVM::C_SVC);
+    svmClassifier->setKernel(cv::ml::SVM::LINEAR);
+    svmClassifier->setDegree(0.0);
+    svmClassifier->setGamma(1.0);
+    svmClassifier->setCoef0(0);
+    svmClassifier->setC(1);
+    svmClassifier->setNu(0.0);
+    svmClassifier->setP(0);
+    svmClassifier->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 1000, 0.01));
 
-      int area= candidate.size.height * candidate.size.width;
-      float r= (float)candidate.size.width / (float)candidate.size.height;
-      if(r<1)
-      r= 1/r;
+    Ptr<TrainData> tdata= TrainData::create(SVM_TrainingData, ROW_SAMPLE, SVM_Classes);
 
-      if(( area < min || area > max ) || ( r < rmin || r > rmax )){
-        return false;
-      }else{
-      return true;
-      }
-    }
-     */
+    svmClassifier->train(tdata);
 
-    
-    
-    
-    
-    
-    
-    /*
-    imshow("Display window", input);
-    int k = waitKey(0); // Wait for a keystroke in the window
-    if(k == 's')
+    //For each possible plate, classify with svm if it's a plate or no
+    vector<Plate> plates;
+    for(int i=0; i< posible_regions.size(); i++)
     {
-        imwrite("Plates", input);
+        Mat img=posible_regions[i].plateImg;
+        Mat p= img.reshape(1, 1);
+        p.convertTo(p, CV_32FC1);
+
+        int response = (int)svmClassifier->predict( p );
+        if(response==1)
+            plates.push_back(posible_regions[i]);
     }
-     */
+
+    cout << "Num plates detected: " << plates.size() << "\n";
+    //For each plate detected, recognize it with OCR
+    OCR ocr("OCR.xml");
+    ocr.saveSegments=true;
+    ocr.DEBUG=false;
+    ocr.filename=filename_whithoutExt;
+    for(int i=0; i< plates.size(); i++){
+        Plate plate=plates[i];
+        
+        string plateNumber=ocr.run(&plate);
+        string licensePlate=plate.str();
+        cout << "================================================\n";
+        cout << "License plate number: "<< licensePlate << "\n";
+        cout << "================================================\n";
+        rectangle(input_image, plate.position, Scalar(0,0,200));
+        putText(input_image, licensePlate, Point(plate.position.x, plate.position.y), FONT_HERSHEY_SIMPLEX, 1, Scalar(0,0,200),2);
+        if(ocr.DEBUG){
+            imshow("Plate Detected seg", plate.plateImg);
+            waitKey(0);
+        }
+
+    }
+        namedWindow("Plate Detected",WINDOW_NORMAL);
+        imshow("Plate Detected", input_image);
+       for(;;)
+       {
+       int c;
+       c = waitKey(10);
+       if( (char) c == 27)
+       break;
+       }
     return 0;
-    
-    //convert image to gray
-
-    
-    
-    
-   
-    
 }
+
 
