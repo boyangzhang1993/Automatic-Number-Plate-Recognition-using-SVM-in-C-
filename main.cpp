@@ -4,7 +4,7 @@
 //
 //  Created by Boyang Zhang on 12/31/20.
 //
-
+// Main entry code OpenCV
 #include <opencv2/opencv.hpp>
 
 #include <iostream>
