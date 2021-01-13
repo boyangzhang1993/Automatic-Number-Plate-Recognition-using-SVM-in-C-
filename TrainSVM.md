@@ -5,3 +5,5 @@
     svm->setType(SVM::C_SVC);
     svm->setKernel(SVM::LINEAR);
     svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
+    ## Train by data
+    svm->train(trainingDataMat, ROW_SAMPLE, labelsMat);
