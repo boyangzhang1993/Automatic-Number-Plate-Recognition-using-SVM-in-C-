@@ -16,7 +16,7 @@ def _int64_feature(value):
 
 
 def create_tfrecords_from_folder(folder, output_file):
-    print "Folder:", folder, "Output:", output_file
+    #print "Folder:", folder, "Output:", output_file
     tfrecords_filename = output_file
     writer = tf.python_io.TFRecordWriter(tfrecords_filename)
 
@@ -26,7 +26,7 @@ def create_tfrecords_from_folder(folder, output_file):
         dirnames.sort()
         for subdirname in dirnames:
             subject_path = os.path.join(dirname, subdirname)
-            print subject_path, "with label", label
+            #print subject_path, "with label", label
                 
             for filename in os.listdir(subject_path):
                 abs_path = "%s/%s" % (subject_path, filename)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.getopt(sys.argv[1:],"hi:o:",["ifolder=","ofile="])
     except getopt.GetoptError:
-        print 'test.py -i <inputfolder> -o <outputfile>'
+        #print 'test.py -i <inputfolder> -o <outputfile>'
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
